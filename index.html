@@ -3,82 +3,151 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Зоны спроса Яндекс.Такси</title>
+  <title>KefPulse - Пульс кэфа</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body, html, #map { margin:0; padding:0; height:100vh; font-family: Arial, sans-serif; }
+    body, html { margin:0; padding:0; height:100vh; font-family: Arial, sans-serif; background: linear-gradient(to bottom, #2c003e, #000); color: white; overflow: hidden; }
+    #loader {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      background: linear-gradient(135deg, #4b0082, #000);
+      z-index: 2000;
+      transition: opacity 0.8s ease;
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+    #logo {
+      font-size: 4.5rem;
+      font-weight: bold;
+      text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+      margin-bottom: 20px;
+      letter-spacing: 5px;
+    }
+    #progress {
+      width: 60%;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+    #bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(to right, #ff00ff, #00ffff);
+      transition: width 2s ease-in-out;
+    }
+    #map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 60px; }
+    #map { height: 100%; }
+    #bottom-menu {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 1000;
+    }
+    .menu-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #aaa;
+      font-size: 11px;
+      padding: 6px 10px;
+      transition: color 0.3s;
+    }
+    .menu-btn.active { color: #ff00ff; }
+    .menu-btn img { width: 28px; height: 28px; margin-bottom: 3px; filter: brightness(0.7); }
+    .menu-btn.active img { filter: brightness(1) drop-shadow(0 0 8px #ff00ff); }
     #header {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(255,255,255,0.95);
-      padding: 10px 15px;
+      top: 10px; left: 10px;
+      background: rgba(0,0,0,0.6);
+      padding: 8px 12px;
       border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      z-index: 1000;
-      max-width: 300px;
-    }
-    #legend {
-      position: absolute;
-      bottom: 20px;
-      right: 10px;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       z-index: 1000;
       font-size: 13px;
     }
-    .legend-item { margin: 5px 0; }
-    .legend-color { display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; }
   </style>
 </head>
 <body>
-  <div id="map"></div>
+  <!-- Загрузочный экран -->
+  <div id="loader">
+    <div id="logo">БОЛЬШОЙ КЭФ</div>
+    <div id="progress"><div id="bar"></div></div>
+  </div>
+
+  <!-- Карта -->
+  <div id="map-container">
+    <div id="map"></div>
+  </div>
+
+  <!-- Нижнее меню -->
+  <div id="bottom-menu">
+    <div class="menu-btn active" data-tariff="express">
+      <img src="https://img.icons8.com/fluency/48/000000/car.png" alt="Экспресс"/>
+      Экспресс
+    </div>
+    <div class="menu-btn" data-tariff="express-plus">
+      <img src="https://img.icons8.com/fluency/48/000000/speed.png" alt="Экспресс+30"/>
+      Экспресс +30
+    </div>
+    <div class="menu-btn" data-tariff="cargo">
+      <img src="https://img.icons8.com/fluency/48/000000/truck.png" alt="Грузовой"/>
+      Грузовой
+    </div>
+    <div class="menu-btn" data-tariff="delivery">
+      <img src="https://img.icons8.com/fluency/48/000000/delivery.png" alt="Доставка"/>
+      Доставка
+    </div>
+  </div>
 
   <div id="header">
-    <strong>Зоны высокого спроса</strong><br>
+    <strong>KefPulse</strong><br>
     <small id="update-time">Обновлено: сейчас</small>
   </div>
 
-  <div id="legend">
-    <div class="legend-item"><span class="legend-color" style="background:#dc143c"></span> Высокий (7–10)</div>
-    <div class="legend-item"><span class="legend-color" style="background:#ffa500"></span> Средний (4–6)</div>
-    <div class="legend-item"><span class="legend-color" style="background:#32cd32"></span> Низкий (1–3)</div>
-  </div>
-
   <script>
+    // Telegram Mini App
     if (window.Telegram && window.Telegram.WebApp) {
       Telegram.WebApp.ready();
       Telegram.WebApp.expand();
-      Telegram.WebApp.setBackgroundColor("#ffffff");
-      document.getElementById('header').style.background = 'rgba(255,255,255,0.98)';
+      Telegram.WebApp.setBackgroundColor("#0f001a");
     }
 
+    // Загрузка
+    setTimeout(() => {
+      document.getElementById('bar').style.width = '100%';
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('hidden');
+      }, 800);
+    }, 500);
+
+    // Карта
     const map = L.map('map', {
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: false
     }).setView([55.7558, 37.6173], 11);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '',
       subdomains: 'abcd',
       maxZoom: 19
     }).addTo(map);
 
+    // Зоны (с динамикой по времени)
     const demandZones = [
-      { name: "ВДНХ", lat: 55.8211, lng: 37.6405, level: 5, desc: "Средний (ночь + узел)" },
-      { name: "Красная площадь", lat: 55.7558, lng: 37.6173, level: 7, desc: "Высокий (центр)" },
-      { name: "Шереметьево", lat: 55.9720, lng: 37.4150, level: 8, desc: "Высокий (аэропорт)" },
-      { name: "Домодедово", lat: 55.4088, lng: 37.9063, level: 7, desc: "Высокий (аэропорт)" },
-      { name: "Внуково", lat: 55.6030, lng: 37.2700, level: 7, desc: "Высокий (аэропорт)" },
-      { name: "Тверская улица", lat: 55.7616, lng: 37.6095, level: 6, desc: "Средний (центр)" },
-      { name: "Киевский вокзал", lat: 55.7480, lng: 37.5400, level: 6, desc: "Средний" },
-      { name: "Павелецкий вокзал", lat: 55.7070, lng: 37.6200, level: 6, desc: "Средний" },
-      { name: "Одинцово", lat: 55.6780, lng: 37.2630, level: 4, desc: "Низкий / пригород" },
-      { name: "Москва-Сити", lat: 55.7480, lng: 37.5390, level: 7, desc: "Высокий (бизнес-центр)" },
+      { name: "ВДНХ", lat: 55.8211, lng: 37.6405, baseLevel: 5, desc: "Средний (ночь + узел)" },
+      { name: "Красная площадь", lat: 55.7558, lng: 37.6173, baseLevel: 7, desc: "Высокий (центр)" },
+      { name: "Шереметьево", lat: 55.9720, lng: 37.4150, baseLevel: 8, desc: "Высокий (аэропорт)" },
+      { name: "Домодедово", lat: 55.4088, lng: 37.9063, baseLevel: 7, desc: "Высокий (аэропорт)" },
+      { name: "Тверская", lat: 55.7616, lng: 37.6095, baseLevel: 6, desc: "Средний" },
     ];
 
     const now = new Date();
@@ -87,21 +156,21 @@
     const isNight = hour >= 22 || hour <= 6;
 
     demandZones.forEach(zone => {
-      let baseLevel = zone.level || 5;
-      if (isPeak) baseLevel += 3;
-      if (isNight) baseLevel = Math.max(1, baseLevel - 2);
-      if (zone.name.includes("площадь") || zone.name.includes("Шереметьево") || zone.name.includes("Домодедово") || zone.name.includes("Внуково") || zone.name.includes("Сити")) {
-        baseLevel += 2;
+      let level = zone.baseLevel;
+      if (isPeak) level += 3;
+      if (isNight) level = Math.max(1, level - 2);
+      if (zone.name.includes("площадь") || zone.name.includes("Шереметьево") || zone.name.includes("Домодедово")) {
+        level += 2;
       }
-      zone.level = Math.min(10, Math.max(1, baseLevel));
+      zone.level = Math.min(10, Math.max(1, level));
 
-      if (zone.level >= 7) zone.color = "#dc143c";
-      else if (zone.level >= 4) zone.color = "#ffa500";
-      else zone.color = "#32cd32";
+      let color = "#32cd32";
+      if (zone.level >= 7) color = "#dc143c";
+      else if (zone.level >= 4) color = "#ffa500";
 
       L.circleMarker([zone.lat, zone.lng], {
         radius: zone.level > 6 ? 22 : 16,
-        fillColor: zone.color,
+        fillColor: color,
         color: "white",
         weight: 2,
         opacity: 1,
@@ -113,8 +182,17 @@
 
     document.getElementById('update-time').textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU');
 
-    // Автообновление каждые 60 секунд
+    // Автообновление
     setInterval(() => location.reload(), 60000);
+
+    // Меню тарифа (пока просто выделение)
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // Здесь можно добавить фильтр зон по тарифу в будущем
+      });
+    });
   </script>
 </body>
 </html>
