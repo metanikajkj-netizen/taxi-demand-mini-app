@@ -54,6 +54,7 @@
       Telegram.WebApp.ready();
       Telegram.WebApp.expand();
       Telegram.WebApp.setBackgroundColor("#ffffff");
+      document.getElementById('header').style.background = 'rgba(255,255,255,0.98)';
     }
 
     const map = L.map('map', {
@@ -68,14 +69,36 @@
     }).addTo(map);
 
     const demandZones = [
-      { name: "ВДНХ", lat: 55.8211, lng: 37.6405, level: 5, color: "#ffa500", desc: "Средний (ночь + узел)" },
-      { name: "Красная площадь", lat: 55.7558, lng: 37.6173, level: 7, color: "#dc143c", desc: "Высокий (центр)" },
-      { name: "Шереметьево", lat: 55.9720, lng: 37.4150, level: 8, color: "#dc143c", desc: "Высокий (аэропорт)" },
-      { name: "Тверская", lat: 55.7616, lng: 37.6095, level: 6, color: "#ffa500", desc: "Средний" },
-      { name: "Киевский вокзал", lat: 55.7480, lng: 37.5400, level: 6, color: "#ffa500", desc: "Средний" },
+      { name: "ВДНХ", lat: 55.8211, lng: 37.6405, level: 5, desc: "Средний (ночь + узел)" },
+      { name: "Красная площадь", lat: 55.7558, lng: 37.6173, level: 7, desc: "Высокий (центр)" },
+      { name: "Шереметьево", lat: 55.9720, lng: 37.4150, level: 8, desc: "Высокий (аэропорт)" },
+      { name: "Домодедово", lat: 55.4088, lng: 37.9063, level: 7, desc: "Высокий (аэропорт)" },
+      { name: "Внуково", lat: 55.6030, lng: 37.2700, level: 7, desc: "Высокий (аэропорт)" },
+      { name: "Тверская улица", lat: 55.7616, lng: 37.6095, level: 6, desc: "Средний (центр)" },
+      { name: "Киевский вокзал", lat: 55.7480, lng: 37.5400, level: 6, desc: "Средний" },
+      { name: "Павелецкий вокзал", lat: 55.7070, lng: 37.6200, level: 6, desc: "Средний" },
+      { name: "Одинцово", lat: 55.6780, lng: 37.2630, level: 4, desc: "Низкий / пригород" },
+      { name: "Москва-Сити", lat: 55.7480, lng: 37.5390, level: 7, desc: "Высокий (бизнес-центр)" },
     ];
 
+    const now = new Date();
+    const hour = now.getHours();
+    const isPeak = (hour >= 7 && hour <= 10) || (hour >= 16 && hour <= 21);
+    const isNight = hour >= 22 || hour <= 6;
+
     demandZones.forEach(zone => {
+      let baseLevel = zone.level || 5;
+      if (isPeak) baseLevel += 3;
+      if (isNight) baseLevel = Math.max(1, baseLevel - 2);
+      if (zone.name.includes("площадь") || zone.name.includes("Шереметьево") || zone.name.includes("Домодедово") || zone.name.includes("Внуково") || zone.name.includes("Сити")) {
+        baseLevel += 2;
+      }
+      zone.level = Math.min(10, Math.max(1, baseLevel));
+
+      if (zone.level >= 7) zone.color = "#dc143c";
+      else if (zone.level >= 4) zone.color = "#ffa500";
+      else zone.color = "#32cd32";
+
       L.circleMarker([zone.lat, zone.lng], {
         radius: zone.level > 6 ? 22 : 16,
         fillColor: zone.color,
@@ -89,6 +112,9 @@
     });
 
     document.getElementById('update-time').textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU');
+
+    // Автообновление каждые 60 секунд
+    setInterval(() => location.reload(), 60000);
   </script>
 </body>
 </html>
