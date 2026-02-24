@@ -205,9 +205,8 @@
       }
       zone.level = Math.min(10, Math.max(1, level));
 
-      // Градиент фиолетовый по уровню
       let color;
-      if (zone.level >= 8) color = "#4b0082";      // тёмный фиолетовый
+      if (zone.level >= 8) color = "#4b0082";      // тёмный
       else if (zone.level >= 5) color = "#9370db"; // средний
       else color = "#c3b1e1";                      // светлый
 
@@ -216,10 +215,8 @@
 
     document.getElementById('update-time').textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU');
 
-    // Автообновление каждые 60 секунд
     setInterval(() => location.reload(), 60000);
 
-    // Меню тарифа (пока просто выделение)
     document.querySelectorAll('.menu-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
