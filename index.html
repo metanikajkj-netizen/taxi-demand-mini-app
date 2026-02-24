@@ -39,12 +39,12 @@
       background: linear-gradient(to right, #ff00ff, #00ffff);
       transition: width 2s ease-in-out;
     }
-    #map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 60px; }
+    #map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 70px; }
     #map { height: 100%; }
     #bottom-menu {
       position: absolute;
       bottom: 0; left: 0; right: 0;
-      height: 60px;
+      height: 70px;
       background: rgba(0,0,0,0.8);
       backdrop-filter: blur(10px);
       border-top: 1px solid rgba(255,255,255,0.1);
@@ -76,7 +76,7 @@
     }
     #legend {
       position: absolute;
-      bottom: 70px;
+      bottom: 80px;
       right: 10px;
       background: rgba(0,0,0,0.7);
       padding: 10px;
@@ -85,7 +85,7 @@
       font-size: 12px;
     }
     .legend-item { margin: 5px 0; }
-    .legend-color { display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; }
+    .legend-color { display: inline-block; width: 20px; height: 20px; border-radius: 4px; margin-right: 8px; }
   </style>
 </head>
 <body>
@@ -161,17 +161,17 @@
     // Функция для рисования шестиугольника
     function drawHexagon(lat, lng, size, color, level, name, desc) {
       const hex = L.polygon([
-        [lat + size * 0.0005, lng],
-        [lat + size * 0.00025, lng + size * 0.000433],
-        [lat - size * 0.00025, lng + size * 0.000433],
-        [lat - size * 0.0005, lng],
-        [lat - size * 0.00025, lng - size * 0.000433],
-        [lat + size * 0.00025, lng - size * 0.000433],
+        [lat + size * 0.0008, lng],
+        [lat + size * 0.0004, lng + size * 0.000693],
+        [lat - size * 0.0004, lng + size * 0.000693],
+        [lat - size * 0.0008, lng],
+        [lat - size * 0.0004, lng - size * 0.000693],
+        [lat + size * 0.0004, lng - size * 0.000693],
       ], {
         color: 'white',
         fillColor: color,
         fillOpacity: 0.6,
-        weight: 1
+        weight: 1.5
       }).addTo(map);
 
       hex.bindPopup(`<b>${name}</b><br>${desc}<br>Уровень: ${level}/10`);
@@ -211,8 +211,7 @@
       else if (zone.level >= 5) color = "#9370db"; // средний
       else color = "#c3b1e1";                      // светлый
 
-      // Рисуем шестиугольник вместо круга
-      drawHexagon(zone.lat, zone.lng, 0.005, color, zone.level, zone.name, zone.desc);
+      drawHexagon(zone.lat, zone.lng, 0.008, color, zone.level, zone.name, zone.desc);
     });
 
     document.getElementById('update-time').textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU');
