@@ -8,7 +8,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body, html { margin:0; padding:0; height:100vh; font-family: Arial, sans-serif; background: linear-gradient(to bottom, #2c003e, #000); color: white; overflow: hidden; }
+    body, html, #map { margin:0; padding:0; height:100vh; font-family: Arial, sans-serif; }
     #loader {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -74,10 +74,22 @@
       z-index: 1000;
       font-size: 13px;
     }
+    #legend {
+      position: absolute;
+      bottom: 70px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 1000;
+      font-size: 12px;
+    }
+    .legend-item { margin: 5px 0; }
+    .legend-color { display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; }
   </style>
 </head>
 <body>
-  <!-- Загрузочный экран -->
+  <!-- Загрузка -->
   <div id="loader">
     <div id="logo">KEFPULSE</div>
     <div id="progress"><div id="bar"></div></div>
@@ -91,19 +103,19 @@
   <!-- Нижнее меню -->
   <div id="bottom-menu">
     <div class="menu-btn active" data-tariff="express">
-      <img src="https://img.icons8.com/fluency/48/000000/car.png" alt="Экспресс"/>
+      <img src="https://img.icons8.com/fluency/48/car.png" alt="Экспресс"/>
       Экспресс
     </div>
     <div class="menu-btn" data-tariff="express-plus">
-      <img src="https://img.icons8.com/fluency/48/000000/speed.png" alt="Экспресс+30"/>
+      <img src="https://img.icons8.com/fluency/48/speed.png" alt="Экспресс+30"/>
       Экспресс +30
     </div>
     <div class="menu-btn" data-tariff="cargo">
-      <img src="https://img.icons8.com/fluency/48/000000/truck.png" alt="Грузовой"/>
+      <img src="https://img.icons8.com/fluency/48/truck.png" alt="Грузовой"/>
       Грузовой
     </div>
     <div class="menu-btn" data-tariff="delivery">
-      <img src="https://img.icons8.com/fluency/48/000000/delivery.png" alt="Доставка"/>
+      <img src="https://img.icons8.com/fluency/48/delivery.png" alt="Доставка"/>
       Доставка
     </div>
   </div>
@@ -113,12 +125,18 @@
     <small id="update-time">Обновлено: сейчас</small>
   </div>
 
+  <div id="legend">
+    <div class="legend-item"><span class="legend-color" style="background:#6a0dad"></span> Высокий кэф</div>
+    <div class="legend-item"><span class="legend-color" style="background:#9370db"></span> Средний</div>
+    <div class="legend-item"><span class="legend-color" style="background:#c3b1e1"></span> Низкий</div>
+  </div>
+
   <script>
-    // Telegram Mini App
     if (window.Telegram && window.Telegram.WebApp) {
       Telegram.WebApp.ready();
       Telegram.WebApp.expand();
       Telegram.WebApp.setBackgroundColor("#0f001a");
+      document.getElementById('header').style.background = 'rgba(0,0,0,0.7)';
     }
 
     // Загрузка
@@ -131,7 +149,7 @@
 
     // Карта
     const map = L.map('map', {
-      zoomControl: false,
+      zoomControl: true,
       attributionControl: false
     }).setView([55.7558, 37.6173], 11);
 
@@ -141,13 +159,37 @@
       maxZoom: 19
     }).addTo(map);
 
-    // Зоны (с динамикой по времени)
+    // Шестиугольники (hex grid)
+    function drawHexagon(lat, lng, size, color, level, name, desc) {
+      const hex = L.polygon([
+        [lat + size * 0.0005, lng],
+        [lat + size * 0.00025, lng + size * 0.000433],
+        [lat - size * 0.00025, lng + size * 0.000433],
+        [lat - size * 0.0005, lng],
+        [lat - size * 0.00025, lng - size * 0.000433],
+        [lat + size * 0.00025, lng - size * 0.000433],
+      ], {
+        color: 'white',
+        fillColor: color,
+        fillOpacity: 0.6,
+        weight: 1
+      }).addTo(map);
+
+      hex.bindPopup(`<b>${name}</b><br>${desc}<br>Уровень: ${level}/10`);
+    }
+
+    // Зоны
     const demandZones = [
       { name: "ВДНХ", lat: 55.8211, lng: 37.6405, baseLevel: 5, desc: "Средний (ночь + узел)" },
       { name: "Красная площадь", lat: 55.7558, lng: 37.6173, baseLevel: 7, desc: "Высокий (центр)" },
       { name: "Шереметьево", lat: 55.9720, lng: 37.4150, baseLevel: 8, desc: "Высокий (аэропорт)" },
       { name: "Домодедово", lat: 55.4088, lng: 37.9063, baseLevel: 7, desc: "Высокий (аэропорт)" },
-      { name: "Тверская", lat: 55.7616, lng: 37.6095, baseLevel: 6, desc: "Средний" },
+      { name: "Внуково", lat: 55.6030, lng: 37.2700, baseLevel: 7, desc: "Высокий (аэропорт)" },
+      { name: "Тверская улица", lat: 55.7616, lng: 37.6095, baseLevel: 6, desc: "Средний (центр)" },
+      { name: "Киевский вокзал", lat: 55.7480, lng: 37.5400, baseLevel: 6, desc: "Средний" },
+      { name: "Павелецкий вокзал", lat: 55.7070, lng: 37.6200, baseLevel: 6, desc: "Средний" },
+      { name: "Одинцово", lat: 55.6780, lng: 37.2630, baseLevel: 4, desc: "Низкий / пригород" },
+      { name: "Москва-Сити", lat: 55.7480, lng: 37.5390, baseLevel: 7, desc: "Высокий (бизнес-центр)" },
     ];
 
     const now = new Date();
@@ -159,25 +201,18 @@
       let level = zone.baseLevel;
       if (isPeak) level += 3;
       if (isNight) level = Math.max(1, level - 2);
-      if (zone.name.includes("площадь") || zone.name.includes("Шереметьево") || zone.name.includes("Домодедово")) {
+      if (zone.name.includes("площадь") || zone.name.includes("Шереметьево") || zone.name.includes("Домодедово") || zone.name.includes("Внуково") || zone.name.includes("Сити")) {
         level += 2;
       }
       zone.level = Math.min(10, Math.max(1, level));
 
-      let color = "#32cd32";
-      if (zone.level >= 7) color = "#dc143c";
-      else if (zone.level >= 4) color = "#ffa500";
+      // Градиент фиолетовый по уровню
+      let color;
+      if (zone.level >= 8) color = "#4b0082";      // тёмный фиолетовый
+      else if (zone.level >= 5) color = "#9370db"; // средний
+      else color = "#c3b1e1";                      // светлый
 
-      L.circleMarker([zone.lat, zone.lng], {
-        radius: zone.level > 6 ? 22 : 16,
-        fillColor: color,
-        color: "white",
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.7
-      })
-      .addTo(map)
-      .bindPopup(`<b>${zone.name}</b><br>${zone.desc}<br>Уровень: ${zone.level}/10`);
+      drawHexagon(zone.lat, zone.lng, 0.005, color, zone.level, zone.name, zone.desc);
     });
 
     document.getElementById('update-time').textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU');
@@ -196,4 +231,3 @@
   </script>
 </body>
 </html>
-
